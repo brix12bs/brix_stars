@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GameHub - Мої бравлери</title>
+    <style>
+        :root {
+            --primary-color: #FF8800;
+            --secondary-color: #4A4A4A;
+            --background-color: #1E1E1E;
+            --card-color: #2D2D2D;
+            --text-color: #FFFFFF;
+            --rare-color: #4CAF50;
+            --epic-color: #9C27B0;
+            --legendary-color: #FF9800;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background-color: var(--secondary-color);
+            padding: 15px 0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .trophy-count {
+            background-color: var(--primary-color);
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        
+        .logout-btn {
+            background-color: #FF3333;
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .sidebar {
+            background-color: var(--card-color);
+            border-radius: 10px;
+            padding: 20px;
+        }
+        
+        .nav-menu {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .nav-item {
+            margin-bottom: 15px;
+        }
+        
+        .nav-link {
+            color: var(--text-color);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 15px;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        
+        .nav-link:hover {
+            background-color: rgba(255, 136, 0, 0.2);
+        }
+        
+        .nav-link.active {
+            background-color: var(--primary-color);
+            font-weight: bold;
+        }
+        
+        .content-area {
+            background-color: var(--card-color);
+            border-radius: 10px;
+            padding: 20px;
+        }
+        
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .page-title {
+            font-size: 24px;
+            color: var(--primary-color);
+            margin: 0;
+        }
+        
+        .brawlers-count {
+            background-color: var(--secondary-color);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .filter-btn {
+            background-color: #3A3A3A;
+            color: var(--text-color);
+            border: none;
+            padding: 5px 15px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .filter-btn.active {
+            background-color: var(--primary-color);
+        }
+        
+        .filter-btn:hover {
+            background-color: #4A4A4A;
+        }
+        
+        .brawlers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 20px;
+        }
+        
+        .brawler-card {
+            background-color: #3A3A3A;
+            border-radius: 10px;
+            overflow: hidden;
+            transition: transform 0.3s;
+            position: relative;
+        }
+        
+        .brawler-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .brawler-image {
+            height: 150px;
+            background-color: #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            position: relative;
+        }
+        
+        .brawler-rarity {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: var(--rare-color);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+        }
+        
+        .brawler-info {
+            padding: 15px;
+        }
+        
+        .brawler-name {
+            font-size: 18px;
+            margin: 0 0 5px 0;
+        }
+        
+        .brawler-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: #AAA;
+        }
+        
+        .brawler-power {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .brawler-trophies {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .progress-container {
+            width: 100%;
+            background-color: #555;
+            border-radius: 5px;
+            margin-top: 10px;
+            height: 5px;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            border-radius: 5px;
+            background-color: var(--primary-color);
+        }
+        
+        .rarity-rare {
+            background-color: var(--rare-color);
+        }
+        
+        .rarity-epic {
+            background-color: var(--epic-color);
+        }
+        
+        .rarity-legendary {
+            background-color: var(--legendary-color);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 0;
+            color: #AAA;
+        }
+        
+        .unlock-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container header-content">
+            <div class="logo">BRAWL HUB</div>
+            <div class="user-info">
+                <div class="trophy-count">{{ user.trophies }} 🏆</div>
+                <div>{{ user.username }}</div>
+                <a href="{{ url_for('logout') }}" class="logout-btn">Вийти</a>
+            </div>
+        </div>
+    </header>
+    
+    <div class="container">
+        <div class="main-content">
+            <div class="sidebar">
+                <ul class="nav-menu">
+                    <li class="nav-item"><a href="{{ url_for('index') }}" class="nav-link">🏠 Головна</a></li>
+                    <li class="nav-item"><a href="{{ url_for('profile') }}" class="nav-link">👤 Профіль</a></li>
+                    <li class="nav-item"><a href="{{ url_for('brawlers') }}" class="nav-link active">🦸 Мої бравлери</a></li>
+                    <li class="nav-item"><a href="{{ url_for('game') }}" class="nav-link">🎮 Грати</a></li>
+                </ul>
+            </div>
+            
+            <div class="content-area">
+                <div class="page-header">
+                    <h1 class="page-title">Мої бравлери</h1>
+                    <div class="brawlers-count">{{ user.brawlers|length }}/50</div>
+                </div>
+                
+                <div class="filters">
+                    <button class="filter-btn active">Усі</button>
+                    <button class="filter-btn">Рідкісні</button>
+                    <button class="filter-btn">Епічні</button>
+                    <button class="filter-btn">Легендарні</button>
+                    <button class="filter-btn">За трофеями</button>
+                    <button class="filter-btn">За силою</button>
+                </div>
+                
+                {% if user.brawlers %}
+                <div class="brawlers-grid">
+                    {% for brawler in user.brawlers %}
+                    <div class="brawler-card">
+                        <div class="brawler-image">
+                            {{ brawler.name[0] }}{{ brawler.name[-1] }}
+                            <span class="brawler-rarity rarity-{% if brawler.power >= 10 %}legendary{% elif brawler.power >= 7 %}epic{% else %}rare{% endif %}">
+                                {% if brawler.power >= 10 %}Легенда{% elif brawler.power >= 7 %}Епічний{% else %}Рідкісний{% endif %}
+                            </span>
+                        </div>
+                        <div class="brawler-info">
+                            <h3 class="brawler-name">{{ brawler.name }}</h3>
+                            <div class="brawler-stats">
+                                <div class="brawler-power">⚡ {{ brawler.power }}</div>
+                                <div class="brawler-trophies">🏆 {{ brawler.trophies }}</div>
+                            </div>
+                            <div class="progress-container">
+                                <div class="progress-bar" style="width: {{ (brawler.trophies / 500) * 100 }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    <!-- Приклад бравлера для розблокування -->
+                    <div class="brawler-card" style="opacity: 0.7;">
+                        <div class="brawler-image">
+                            ?
+                        </div>
+                        <div class="brawler-info">
+                            <h3 class="brawler-name">Новий бравлер</h3>
+                            <p style="font-size: 14px; color: #AAA; margin: 5px 0;">Розблокуйте за 1000 трофеїв</p>
+                            <button class="unlock-btn" disabled>Розблокувати</button>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <h3>У вас ще немає бравлерів</h3>
+                    <p>Грайте в ігри, щоб отримувати нових бравлерів!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Проста фільтрація бравлерів
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelector('.filter-btn.active').classList.remove('active');
+                this.classList.add('active');
+                
+                // Тут буде логіка фільтрації
+                // Наразі просто імітуємо фільтрацію
+            });
+        });
+    </script>
+</body>
+</html>

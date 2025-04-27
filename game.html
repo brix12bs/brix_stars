@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brawl Stars Showdown</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        #game-canvas {
+            display: block;
+            background-color: #1a2a3a;
+        }
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            text-shadow: 1px 1px 2px black;
+        }
+        #mobile-controls {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            height: 120px;
+            pointer-events: none;
+        }
+        #move-joystick {
+            position: absolute;
+            left: 30px;
+            width: 120px;
+            height: 120px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            pointer-events: all;
+            touch-action: manipulation;
+        }
+        #attack-joystick {
+            position: absolute;
+            right: 30px;
+            width: 120px;
+            height: 120px;
+            background-color: rgba(255, 136, 0, 0.1);
+            border-radius: 50%;
+            pointer-events: all;
+            touch-action: manipulation;
+        }
+        .joystick-knob {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-color: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            top: 35px;
+            left: 35px;
+            touch-action: manipulation;
+        }
+        .name-tag {
+            position: absolute;
+            color: white;
+            font-size: 12px;
+            text-align: center;
+            text-shadow: 1px 1px 2px black;
+            pointer-events: none;
+            white-space: nowrap;
+            font-weight: bold;
+        }
+        .health-bar {
+            position: absolute;
+            height: 3px;
+            background-color: red;
+            top: -8px;
+            left: 0;
+            width: 100%;
+        }
+        .health-bar-fill {
+            height: 100%;
+            background-color: lime;
+        }
+        #storm {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.3;
+            z-index: 10;
+            display: none;
+        }
+        #trophies-count {
+            background-color: rgba(0,0,0,0.5);
+            padding: 5px 10px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        <div id="storm"></div>
+        
+        <div id="ui-overlay">
+            <div id="player-info">
+                <div id="health">❤️ 100%</div>
+                <div id="ammo">🔫 •••</div>
+                <div id="trophies-count">🏆 0</div>
+            </div>
+            <div id="game-info">
+                <div id="players-remaining">👥 10</div>
+                <div id="storm-timer">☠️ 2:00</div>
+            </div>
+        </div>
+        
+        <div id="mobile-controls">
+            <div id="move-joystick">
+                <div class="joystick-knob" id="move-knob"></div>
+            </div>
+            <div id="attack-joystick">
+                <div class="joystick-knob" id="attack-knob"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Ініціалізація гри
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const stormElement = document.getElementById('storm');
+        
+        // Налаштування розміру canvas
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        
+        // Налаштування карти
+        const map = {
+            width: 3000,
+            height: 3000,
+            offsetX: 0,
+            offsetY: 0,
+            walls: [],
+            bushes: [],
+            lakes: []
+        };
+        
+        // Генерація карти
+        function generateMap() {
+            // Стіни
+            for (let i = 0; i < 15; i++) {
+                map.walls.push({
+                    x: Math.random() * map.width,
+                    y: Math.random() * map.height,
+                    width: 100 + Math.random() * 200,
+                    height: 100 + Math.random() * 200
+                });
+            }
+            
+            // Кущі
+            for (let i = 0; i < 30; i++) {
+                map.bushes.push({
+                    x: Math.random() * map.width,
+                    y: Math.random() * map.height,
+                    radius: 30 + Math.random() * 40
+                });
+            }
+            
+            // Озера
+            for (let i = 0; i < 5; i++) {
+                map.lakes.push({
+                    x: Math.random() * map.width,
+                    y: Math.random() * map.height,
+                    radius: 80 + Math.random() * 120
+                });
+            }
+        }
+        
+        // Малювання карти
+        function drawMap() {
+            // Трава
+            ctx.fillStyle = '#3a5c3a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Озера
+            ctx.fillStyle = '#1a3a5a';
+            map.lakes.forEach(lake => {
+                ctx.beginPath();
+                ctx.arc(
+                    lake.x - map.offsetX,
+                    lake.y - map.offsetY,
+                    lake.radius,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+            });
+            
+            // Кущі
+            ctx.fillStyle = '#2a4a2a';
+            map.bushes.forEach(bush => {
+                ctx.beginPath();
+                ctx.arc(
+                    bush.x - map.offsetX,
+                    bush.y - map.offsetY,
+                    bush.radius,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+            });
+            
+            // Стіни
+            ctx.fillStyle = '#5a4a3a';
+            map.walls.forEach(wall => {
+                ctx.fillRect(
+                    wall.x - map.offsetX,
+                    wall.y - map.offsetY,
+                    wall.width,
+                    wall.height
+                );
+            });
+        }
+        
+        // Ігрові об'єкти
+        const player = {
+            id: 'player',
+            name: 'Player',
+            x: map.width / 2,
+            y: map.height / 2,
+            size: 30,
+            color: '#FF8800',
+            speed: 5,
+            health: 100,
+            maxHealth: 100,
+            ammo: 3,
+            moveDirection: { x: 0, y: 0 },
+            attackDirection: { x: 1, y: 0 },
+            lastShot: 0,
+            shootDelay: 300,
+            character: 'shelly',
+            trophies: 0
+        };
+        
+        const bullets = [];
+        const enemies = [];
+        const storm = {
+            radius: Math.max(map.width, map.height) * 0.7,
+            currentRadius: Math.max(map.width, map.height),
+            shrinkSpeed: 0.2,
+            damage: 0.5,
+            active: false,
+            timer: 120 // 2 хвилини
+        };
+        
+        // Генерація ботів
+        function spawnBots() {
+            const brawlers = ['shelly', 'colt', 'nita', 'bull', 'dynamike'];
+            
+            for (let i = 0; i < 9; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * map.width * 0.4;
+                const x = map.width / 2 + Math.cos(angle) * distance;
+                const y = map.height / 2 + Math.sin(angle) * distance;
+                
+                enemies.push({
+                    id: 'bot_' + i,
+                    name: 'Bot_' + Math.floor(Math.random() * 1000),
+                    x: x,
+                    y: y,
+                    size: 30,
+                    color: '#FF3333',
+                    speed: 2 + Math.random() * 2,
+                    health: 100,
+                    maxHealth: 100,
+                    type: brawlers[Math.floor(Math.random() * brawlers.length)],
+                    trophies: Math.floor(Math.random() * 20),
+                    target: null,
+                    lastDirectionChange: 0,
+                    directionChangeInterval: 1000 + Math.random() * 3000
+                });
+            }
+        }
+        
+        // AI для ботів
+        function updateBotAI(bot) {
+            const now = Date.now();
+            
+            // Зміна напрямку через випадкові інтервали
+            if (now - bot.lastDirectionChange > bot.directionChangeInterval) {
+                bot.target = null;
+                bot.lastDirectionChange = now;
+                bot.directionChangeInterval = 1000 + Math.random() * 3000;
+                
+                // Випадковий рух або атака гравця
+                if (Math.random() < 0.7) {
+                    const angle = Math.random() * Math.PI * 2;
+                    bot.moveDirection = {
+                        x: Math.cos(angle),
+                        y: Math.sin(angle)
+                    };
+                } else {
+                    // Атакувати гравця
+                    const dx = player.x - bot.x;
+                    const dy = player.y - bot.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 500) { // Дистанція атаки
+                        bot.target = player;
+                        bot.moveDirection = {
+                            x: dx / distance,
+                            y: dy / distance
+                        };
+                    }
+                }
+            }
+            
+            // Ухиляння від шторму
+            const centerX = map.width / 2;
+            const centerY = map.height / 2;
+            const distToCenter = Math.sqrt(
+                Math.pow(bot.x - centerX, 2) + 
+                Math.pow(bot.y - centerY, 2)
+            );
+            
+            if (distToCenter > storm.currentRadius * 0.9) {
+                const dx = centerX - bot.x;
+                const dy = centerY - bot.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                bot.moveDirection = {
+                    x: dx / distance,
+                    y: dy / distance
+                };
+            }
+            
+            // Випадкові постріли
+            if (Math.random() < 0.02 && !bot.target) {
+                const angle = Math.random() * Math.PI * 2;
+                shootBullet(bot, angle);
+            }
+            
+            // Постріли по гравцю
+            if (bot.target) {
+                const dx = player.x - bot.x;
+                const dy = player.y - bot.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < 400 && Math.random() < 0.05) {
+                    const angle = Math.atan2(dy, dx);
+                    shootBullet(bot, angle);
+                }
+            }
+        }
+        
+        // Постріл
+        function shootBullet(shooter, angle) {
+            const now = Date.now();
+            if (shooter.id === 'player' && now - shooter.lastShot < shooter.shootDelay) return;
+            
+            bullets.push({
+                x: shooter.x,
+                y: shooter.y,
+                dx: Math.cos(angle) * 10,
+                dy: Math.sin(angle) * 10,
+                size: 8,
+                owner: shooter.id,
+                damage: 25
+            });
+            
+            if (shooter.id === 'player') {
+                shooter.lastShot = now;
+            }
+        }
+        
+        // Оновлення шторму
+        function updateStorm() {
+            if (!storm.active && storm.timer <= 0) {
+                storm.active = true;
+                stormElement.style.display = 'block';
+                stormElement.style.background = 'radial-gradient(circle, transparent ' + 
+                    (storm.currentRadius / map.width * 100) + '%, #aa00aa 100%)';
+            }
+            
+            if (storm.active) {
+                storm.currentRadius -= storm.shrinkSpeed;
+                storm.shrinkSpeed += 0.001; // Поступове прискорення
+                
+                // Оновлення відображення шторму
+                stormElement.style.background = 'radial-gradient(circle, transparent ' + 
+                    (storm.currentRadius / map.width * 100) + '%, #aa00aa 100%)';
+                
+                // Перевірка чи гравець у штормі
+                const centerX = map.width / 2;
+                const centerY = map.height / 2;
+                const distToCenter = Math.sqrt(
+                    Math.pow(player.x - centerX, 2) + 
+                    Math.pow(player.y - centerY, 2)
+                );
+                
+                if (distToCenter > storm.currentRadius) {
+                    player.health -= storm.damage;
+                    updateHealthDisplay();
+                }
+                
+                // Перевірка чи боти у штормі
+                enemies.forEach(enemy => {
+                    const dist = Math.sqrt(
+                        Math.pow(enemy.x - centerX, 2) + 
+                        Math.pow(enemy.y - centerY, 2)
+                    );
+                    
+                    if (dist > storm.currentRadius) {
+                        enemy.health -= storm.damage;
+                    }
+                });
+            } else {
+                storm.timer--;
+                const minutes = Math.floor(storm.timer / 60);
+                const seconds = storm.timer % 60;
+                document.getElementById('storm-timer').textContent = 
+                    `☠️ ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+            }
+        }
+        
+        // Ігровий цикл
+        function gameLoop() {
+            // Очищення canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Оновлення позиції гравця
+            player.x += player.moveDirection.x * player.speed;
+            player.y += player.moveDirection.y * player.speed;
+            
+            // Межі карти
+            player.x = Math.max(player.size, Math.min(map.width - player.size, player.x));
+            player.y = Math.max(player.size, Math.min(map.height - player.size, player.y));
+            
+            // Оновлення камери (центрування на гравці)
+            map.offsetX = player.x - canvas.width / 2;
+            map.offsetY = player.y - canvas.height / 2;
+            
+            // Корекція офсету для меж карти
+            map.offsetX = Math.max(0, Math.min(map.width - canvas.width, map.offsetX));
+            map.offsetY = Math.max(0, Math.min(map.height - canvas.height, map.offsetY));
+            
+            // Малювання карти
+            drawMap();
+            
+            // Оновлення шторму
+            updateStorm();
+            
+            // Оновлення ботів
+            enemies.forEach((enemy, index) => {
+                updateBotAI(enemy);
+                
+                enemy.x += enemy.moveDirection.x * enemy.speed;
+                enemy.y += enemy.moveDirection.y * enemy.speed;
+                
+                // Межі карти для ботів
+                enemy.x = Math.max(enemy.size, Math.min(map.width - enemy.size, enemy.x));
+                enemy.y = Math.max(enemy.size, Math.min(map.height - enemy.size, enemy.y));
+                
+                // Малювання бота
+                ctx.fillStyle = enemy.color;
+                ctx.beginPath();
+                ctx.arc(
+                    enemy.x - map.offsetX,
+                    enemy.y - map.offsetY,
+                    enemy.size,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+                
+                // Малювання імені та здоров'я
+                drawNameTag(enemy);
+                
+                // Видалення мертвих ботів
+                if (enemy.health <= 0) {
+                    player.trophies += enemy.trophies;
+                    document.getElementById('trophies-count').textContent = `🏆 ${player.trophies}`;
+                    enemies.splice(index, 1);
+                    updatePlayersCount();
+                }
+            });
+            
+            // Оновлення куль
+            updateBullets();
+            
+            // Малювання гравця
+            ctx.fillStyle = player.color;
+            ctx.beginPath();
+            ctx.arc(
+                player.x - map.offsetX,
+                player.y - map.offsetY,
+                player.size,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // Малювання імені та здоров'я гравця
+            drawNameTag(player);
+            
+            // Перевірка кінця гри
+            if (player.health <= 0) {
+                endGame(false);
+                return;
+            } else if (enemies.length === 0) {
+                endGame(true);
+                return;
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function updateBullets() {
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                bullet.x += bullet.dx;
+                bullet.y += bullet.dy;
+                
+                // Видалення куль, що вийшли за межі
+                if (bullet.x < 0 || bullet.x > map.width || bullet.y < 0 || bullet.y > map.height) {
+                    bullets.splice(i, 1);
+                    continue;
+                }
+                
+                // Перевірка зіткнення з гравцем
+                if (bullet.owner !== player.id) {
+                    const dx = bullet.x - player.x;
+                    const dy = bullet.y - player.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < player.size + bullet.size) {
+                        player.health -= bullet.damage;
+                        bullets.splice(i, 1);
+                        updateHealthDisplay();
+                        continue;
+                    }
+                }
+                
+                // Перевірка зіткнення з ботами
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const enemy = enemies[j];
+                    if (bullet.owner !== enemy.id) {
+                        const dx = bullet.x - enemy.x;
+                        const dy = bullet.y - enemy.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < enemy.size + bullet.size) {
+                            enemy.health -= bullet.damage;
+                            bullets.splice(i, 1);
+                            break;
+                        }
+                    }
+                }
+                
+                // Малювання кулі
+                ctx.fillStyle = '#FFFF00';
+                ctx.beginPath();
+                ctx.arc(
+                    bullet.x - map.offsetX,
+                    bullet.y - map.offsetY,
+                    bullet.size,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+            }
+        }
+        
+        function drawNameTag(entity) {
+            // Створення елементу для тегу
+            const tag = document.createElement('div');
+            tag.className = 'name-tag';
+            tag.textContent = entity.name;
+            
+            // Позиція тега над персонажем
+            const x = entity.x - map.offsetX;
+            const y = entity.y - map.offsetY - entity.size - 15;
+            
+            tag.style.left = `${x}px`;
+            tag.style.top = `${y}px`;
+            tag.style.transform = 'translate(-50%, 0)';
+            
+            // Health bar
+            const healthBar = document.createElement('div');
+            healthBar.className = 'health-bar';
+            healthBar.style.width = `${entity.size * 2}px`;
+            
+            const healthFill = document.createElement('div');
+            healthFill.className = 'health-bar-fill';
+            healthFill.style.width = `${(entity.health / entity.maxHealth) * 100}%`;
+            
+            healthBar.appendChild(healthFill);
+            tag.appendChild(healthBar);
+            
+            // Додавання до body
+            document.body.appendChild(tag);
+            
+            // Видалення старого тегу, якщо він існує
+            const oldTag = document.getElementById(`tag-${entity.id}`);
+            if (oldTag) oldTag.remove();
+            
+            // Додавання ID для подальшого видалення
+            tag.id = `tag-${entity.id}`;
+        }
+        
+        function updateHealthDisplay() {
+            document.getElementById('health').textContent = `❤️ ${Math.max(0, Math.floor(player.health))}%`;
+        }
+        
+        function updatePlayersCount() {
+            document.getElementById('players-remaining').textContent = `👥 ${enemies.length + 1}`;
+        }
+        
+        function endGame(victory) {
+            cancelAnimationFrame(gameLoop);
+            
+            if (victory) {
+                alert(`Перемога! Ви виграли з ${player.trophies} трофеями!`);
+            } else {
+                alert(`Гра завершена. Ваш результат: ${player.trophies} трофеїв`);
+            }
+            
+            // Перезавантаження гри
+            location.reload();
+        }
+        
+        // Управління клавіатурою
+        const keys = {};
+        window.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            updateMovement();
+        });
+        
+        window.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+            updateMovement();
+        });
+        
+        function updateMovement() {
+            player.moveDirection = { x: 0, y: 0 };
+            
+            if (keys['w'] || keys['arrowup']) player.moveDirection.y = -1;
+            if (keys['s'] || keys['arrowdown']) player.moveDirection.y = 1;
+            if (keys['a'] || keys['arrowleft']) player.moveDirection.x = -1;
+            if (keys['d'] || keys['arrowright']) player.moveDirection.x = 1;
+            
+            // Нормалізація діагонального руху
+            if (player.moveDirection.x !== 0 && player.moveDirection.y !== 0) {
+                player.moveDirection.x *= 0.7;
+                player.moveDirection.y *= 0.7;
+            }
+        }
+        
+        // Управління атакою мишею
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isMobile()) {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                const dx = mouseX + map.offsetX - player.x;
+                const dy = mouseY + map.offsetY - player.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance > 0) {
+                    player.attackDirection = {
+                        x: dx / distance,
+                        y: dy / distance
+                    };
+                }
+            }
+        });
+        
+        canvas.addEventListener('click', (e) => {
+            if (!isMobile()) {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                const dx = mouseX + map.offsetX - player.x;
+                const dy = mouseY + map.offsetY - player.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance > 0) {
+                    const angle = Math.atan2(dy, dx);
+                    shootBullet(player, angle);
+                }
+            }
+        });
+        
+        // Перевірка на мобільний пристрій
+        function isMobile() {
+            return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        }
+        
+        // Ініціалізація джойстиків для мобільних пристроїв
+        if (isMobile()) {
+            setupJoystick('move-joystick', 'move-knob', (dx, dy) => {
+                player.moveDirection = { x: dx, y: dy };
+            });
+            
+            setupJoystick('attack-joystick', 'attack-knob', (dx, dy) => {
+                if (Math.abs(dx) > 0.3 || Math.abs(dy) > 0.3) {
+                    const angle = Math.atan2(dy, dx);
+                    shootBullet(player, angle);
+                }
+            });
+        }
+        
+        function setupJoystick(joystickId, knobId, onMove) {
+            const joystick = document.getElementById(joystickId);
+            const knob = document.getElementById(knobId);
+            let joystickActive = false;
+            let joystickCenter = { x: 0, y: 0 };
+            const maxDistance = 50;
+            
+            joystick.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                joystickActive = true;
+                const rect = joystick.getBoundingClientRect();
+                joystickCenter = {
+                    x: rect.left + rect.width / 2,
+                    y: rect.top + rect.height / 2
+                };
+            });
+            
+            document.addEventListener('touchmove', (e) => {
+                if (!joystickActive) return;
+                e.preventDefault();
+                
+                const touch = e.touches[0];
+                const dx = touch.clientX - joystickCenter.x;
+                const dy = touch.clientY - joystickCenter.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance > maxDistance) {
+                    const angle = Math.atan2(dy, dx);
+                    const limitedX = Math.cos(angle) * maxDistance;
+                    const limitedY = Math.sin(angle) * maxDistance;
+                    knob.style.transform = `translate(${limitedX}px, ${limitedY}px)`;
+                    onMove(limitedX / maxDistance, limitedY / maxDistance);
+                } else {
+                    knob.style.transform = `translate(${dx}px, ${dy}px)`;
+                    onMove(dx / maxDistance, dy / maxDistance);
+                }
+            });
+            
+            document.addEventListener('touchend', () => {
+                joystickActive = false;
+                knob.style.transform = 'translate(0, 0)';
+                onMove(0, 0);
+            });
+        }
+        
+        // Початок гри
+        generateMap();
+        spawnBots();
+        updatePlayersCount();
+        updateHealthDisplay();
+        gameLoop();
+        
+        // Заборонити контекстне меню
+        canvas.addEventListener('contextmenu', e => e.preventDefault());
+    </script>
+</body>
+</html>
